@@ -94,6 +94,7 @@ function hasOwnProperty(key: string) {
 
 function createGetter(isReadonly = false, shallow = false) {
   return function get(target: Target, key: string | symbol, receiver: object) {
+    // reactive被访问的时候触发的函数
     if (key === ReactiveFlags.IS_REACTIVE) {
       return !isReadonly
     } else if (key === ReactiveFlags.IS_READONLY) {
@@ -115,6 +116,7 @@ function createGetter(isReadonly = false, shallow = false) {
       return target
     }
 
+    // 判断下是否是数组
     const targetIsArray = isArray(target)
 
     if (!isReadonly) {
@@ -126,6 +128,8 @@ function createGetter(isReadonly = false, shallow = false) {
       }
     }
 
+    // Reflect是吧最后一个参数receiver作为this，类似于函数的call
+    // 放回target[key]也就是说实际上是receiver[key],这样可以触发get方法
     const res = Reflect.get(target, key, receiver)
 
     if (isSymbol(key) ? builtInSymbols.has(key) : isNonTrackableKeys(key)) {
@@ -133,6 +137,7 @@ function createGetter(isReadonly = false, shallow = false) {
     }
 
     if (!isReadonly) {
+      // vue的响应性的核心在依赖收集和依赖触发，track是依赖收集
       track(target, TrackOpTypes.GET, key)
     }
 
@@ -166,6 +171,7 @@ function createSetter(shallow = false) {
     value: unknown,
     receiver: object
   ): boolean {
+    // reactive被修改的时候触发的函数
     let oldValue = (target as any)[key]
     if (isReadonly(oldValue) && isRef(oldValue) && !isRef(value)) {
       return false
@@ -187,12 +193,14 @@ function createSetter(shallow = false) {
       isArray(target) && isIntegerKey(key)
         ? Number(key) < target.length
         : hasOwn(target, key)
+    // 改变新的值
     const result = Reflect.set(target, key, value, receiver)
     // don't trigger if target is something up in the prototype chain of original
     if (target === toRaw(receiver)) {
       if (!hadKey) {
         trigger(target, TriggerOpTypes.ADD, key, value)
       } else if (hasChanged(value, oldValue)) {
+        // 触发effect
         trigger(target, TriggerOpTypes.SET, key, value, oldValue)
       }
     }
@@ -223,6 +231,8 @@ function ownKeys(target: object): (string | symbol)[] {
   return Reflect.ownKeys(target)
 }
 
+// proxy函数get跟set是核心函数
+// 分别是本文件中的createGetter跟creatSetter所返回的函数
 export const mutableHandlers: ProxyHandler<object> = {
   get,
   set,

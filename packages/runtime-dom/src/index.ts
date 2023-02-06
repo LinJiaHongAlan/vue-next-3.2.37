@@ -55,6 +55,7 @@ function ensureHydrationRenderer() {
 }
 
 // use explicit type casts here to avoid import() calls in rolled-up d.ts
+// 导出的最终被使用的render函数
 export const render = ((...args) => {
   ensureRenderer().render(...args)
 }) as RootRenderFunction<Element | ShadowRoot>

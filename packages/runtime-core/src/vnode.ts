@@ -351,6 +351,7 @@ export function isVNode(value: any): value is VNode {
   return value ? value.__v_isVNode === true : false
 }
 
+// 判断两个节点的类型是否一致
 export function isSameVNodeType(n1: VNode, n2: VNode): boolean {
   if (
     __DEV__ &&
@@ -504,6 +505,7 @@ export const createVNode = (
   __DEV__ ? createVNodeWithArgsTransform : _createVNode
 ) as typeof _createVNode
 
+// 创建虚拟dom方法
 function _createVNode(
   type: VNodeTypes | ClassComponent | typeof NULL_DYNAMIC_COMPONENT,
   props: (Data & VNodeProps) | null = null,
@@ -552,8 +554,10 @@ function _createVNode(
   if (props) {
     // for reactive or proxy objects, we need to clone it to enable mutation.
     props = guardReactiveProps(props)!
+    // 拿到props的class跟style
     let { class: klass, style } = props
     if (klass && !isString(klass)) {
+      // 对class进行增强
       props.class = normalizeClass(klass)
     }
     if (isObject(style)) {

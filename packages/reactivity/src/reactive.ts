@@ -89,9 +89,13 @@ export type UnwrapNestedRefs<T> = T extends Ref ? T : UnwrapRefSimple<T>
 export function reactive<T extends object>(target: T): UnwrapNestedRefs<T>
 export function reactive(target: object) {
   // if trying to observe a readonly proxy, return the readonly version.
+  // 这个是reactive方法开始的地方
   if (isReadonly(target)) {
+    // 判断是否是只读的，是的话直接返回对象
     return target
   }
+  // 不是的话调用方法
+  // mutableHandlers-就是方法里面的baseHandlers
   return createReactiveObject(
     target,
     false,
@@ -185,14 +189,17 @@ function createReactiveObject(
   collectionHandlers: ProxyHandler<any>,
   proxyMap: WeakMap<Target, any>
 ) {
+  // 是否是一个对象
   if (!isObject(target)) {
     if (__DEV__) {
       console.warn(`value cannot be made reactive: ${String(target)}`)
     }
+    // 是的话则提示告警并且返回对象
     return target
   }
   // target is already a Proxy, return it.
   // exception: calling readonly() on a reactive object
+  // 尝试读取target是否有"__v_raw"这个值，若没有则直接跳过
   if (
     target[ReactiveFlags.RAW] &&
     !(isReadonly && target[ReactiveFlags.IS_REACTIVE])
@@ -202,18 +209,25 @@ function createReactiveObject(
   // target already has corresponding Proxy
   const existingProxy = proxyMap.get(target)
   if (existingProxy) {
+    // proxyMap里面是否有保存过target,有的话直接读取并返回
     return existingProxy
   }
   // only specific value types can be observed.
   const targetType = getTargetType(target)
+  // 拿到targetType的类型，判断是否相等，如果相等则直接返回
   if (targetType === TargetType.INVALID) {
     return target
   }
+  // 生成一个新的Proxy对象
   const proxy = new Proxy(
     target,
+    // 判断类型决定使用哪个对象，这里用的是baseHandlers
+    // baseHandlers是触发函数的时候传递进来的参数
     targetType === TargetType.COLLECTION ? collectionHandlers : baseHandlers
   )
+  // 将对象保存到proxyMap里面
   proxyMap.set(target, proxy)
+  // 返回Proxy对象
   return proxy
 }
 
@@ -224,6 +238,7 @@ export function isReactive(value: unknown): boolean {
   return !!(value && (value as Target)[ReactiveFlags.IS_REACTIVE])
 }
 
+// 是否是只读的
 export function isReadonly(value: unknown): boolean {
   return !!(value && (value as Target)[ReactiveFlags.IS_READONLY])
 }

@@ -88,10 +88,16 @@ export type RootRenderFunction<HostElement = RendererElement> = (
   isSVG?: boolean
 ) => void
 
+/**
+ * 渲染器配置对象
+ */
 export interface RendererOptions<
   HostNode = RendererNode,
   HostElement = RendererElement
 > {
+  /**
+   * 为指定的element 的 props 打补丁
+   */
   patchProp(
     el: HostElement,
     key: string,
@@ -103,8 +109,14 @@ export interface RendererOptions<
     parentSuspense?: SuspenseBoundary | null,
     unmountChildren?: UnmountChildrenFn
   ): void
+  /**
+   * 插入指定的el 到 parent 中 anchor 表示插入的位置， 即锚点
+   */
   insert(el: HostNode, parent: HostElement, anchor?: HostNode | null): void
   remove(el: HostNode): void
+  /**
+   * 创建指定的 Element
+   */
   createElement(
     type: string,
     isSVG?: boolean,
@@ -114,6 +126,9 @@ export interface RendererOptions<
   createText(text: string): HostNode
   createComment(text: string): HostNode
   setText(node: HostNode, text: string): void
+  /**
+   * 为指定的 Element 设置 text
+   */
   setElementText(node: HostElement, text: string): void
   parentNode(node: HostNode): HostElement | null
   nextSibling(node: HostNode): HostNode | null
@@ -289,6 +304,10 @@ export const queuePostRenderEffect = __FEATURE_SUSPENSE__
  * })
  * ```
  */
+/**
+ * 对外到处一个createRenderer函数
+ * @param options
+ */
 export function createRenderer<
   HostNode = RendererNode,
   HostElement = RendererElement
@@ -312,6 +331,7 @@ function baseCreateRenderer<
 >(options: RendererOptions<HostNode, HostElement>): Renderer<HostElement>
 
 // overload 2: with hydration
+// render渲染器的主函数
 function baseCreateRenderer(
   options: RendererOptions<Node, Element>,
   createHydrationFns: typeof createHydrationFunctions
@@ -333,6 +353,7 @@ function baseCreateRenderer(
     setDevtoolsHook(target.__VUE_DEVTOOLS_GLOBAL_HOOK__, target)
   }
 
+  // 从options中拿到操作dom的方法
   const {
     insert: hostInsert,
     remove: hostRemove,
@@ -350,6 +371,20 @@ function baseCreateRenderer(
 
   // Note: functions inside this closure should use `const xxx = () => {}`
   // style in order to prevent being inlined by minifiers.
+  /**
+   *
+   * 打补丁函数
+   * @param n1 旧的vnode
+   * @param n2 新的vnode
+   * @param container 容器
+   * @param anchor 锚点默认为null
+   * @param parentComponent
+   * @param parentSuspense
+   * @param isSVG
+   * @param slotScopeIds
+   * @param optimized
+   * @returns
+   */
   const patch: PatchFn = (
     n1,
     n2,
@@ -361,14 +396,18 @@ function baseCreateRenderer(
     slotScopeIds = null,
     optimized = __DEV__ && isHmrUpdating ? false : !!n2.dynamicChildren
   ) => {
+    // 如果新旧节点一样则不进行任何操作
     if (n1 === n2) {
       return
     }
 
     // patching & not same type, unmount old tree
+    // 在进行下面的switch之前，先判断下新旧节点的类型是否一致
     if (n1 && !isSameVNodeType(n1, n2)) {
       anchor = getNextHostNode(n1)
+      // 如果不一致，则卸载旧的节点
       unmount(n1, parentComponent, parentSuspense, true)
+      // 将旧节点置空，这样就会从新执行挂载，而不会执行更新
       n1 = null
     }
 
@@ -377,7 +416,9 @@ function baseCreateRenderer(
       n2.dynamicChildren = null
     }
 
+    // 从新的vnode中取出type跟shapeFlag
     const { type, ref, shapeFlag } = n2
+    // 获取vnode的类型然后根据不同类型分别做各自的操作
     switch (type) {
       case Text:
         processText(n1, n2, container, anchor)
@@ -406,7 +447,10 @@ function baseCreateRenderer(
         )
         break
       default:
+        // 以上则不是则分成两种场景，要么是Element要么是组件
+        // 执行按位与为true则表示存在该类型
         if (shapeFlag & ShapeFlags.ELEMENT) {
+          // 是否为ELEMENT,执行挂载函数
           processElement(
             n1,
             n2,
@@ -419,6 +463,7 @@ function baseCreateRenderer(
             optimized
           )
         } else if (shapeFlag & ShapeFlags.COMPONENT) {
+          // 是否为组件类型
           processComponent(
             n1,
             n2,
@@ -569,6 +614,7 @@ function baseCreateRenderer(
     hostRemove(anchor!)
   }
 
+  // element挂载或更新方法
   const processElement = (
     n1: VNode | null,
     n2: VNode,
@@ -581,7 +627,9 @@ function baseCreateRenderer(
     optimized: boolean
   ) => {
     isSVG = isSVG || (n2.type as string) === 'svg'
+    //
     if (n1 == null) {
+      // 如果旧的值不存在则执行挂在
       mountElement(
         n2,
         container,
@@ -593,6 +641,7 @@ function baseCreateRenderer(
         optimized
       )
     } else {
+      // 否则执行更新,TODO:更新操作
       patchElement(
         n1,
         n2,
@@ -605,6 +654,7 @@ function baseCreateRenderer(
     }
   }
 
+  // 挂载方法
   const mountElement = (
     vnode: VNode,
     container: RendererElement,
@@ -615,10 +665,15 @@ function baseCreateRenderer(
     slotScopeIds: string[] | null,
     optimized: boolean
   ) => {
+    // 1.创建element
+    // 2.设置文本
+    // 3.设置props
+    // 4.插入
     let el: RendererElement
     let vnodeHook: VNodeHook | undefined | null
     const { type, props, shapeFlag, transition, dirs } = vnode
 
+    // 1.创建element节点
     el = vnode.el = hostCreateElement(
       vnode.type as string,
       isSVG,
@@ -628,7 +683,9 @@ function baseCreateRenderer(
 
     // mount children first, since some props may rely on child content
     // being already rendered, e.g. `<select value>`
+    // 2.判断子节点是否是文本
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      // 是的话设置文本
       hostSetElementText(el, vnode.children as string)
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
       mountChildren(
@@ -648,8 +705,9 @@ function baseCreateRenderer(
     }
     // scopeId
     setScopeId(el, vnode, vnode.scopeId, slotScopeIds, parentComponent)
-    // props
+    // 3.存在props则设置props
     if (props) {
+      // 混在props
       for (const key in props) {
         if (key !== 'value' && !isReservedProp(key)) {
           hostPatchProp(
@@ -704,6 +762,7 @@ function baseCreateRenderer(
     if (needCallTransitionHooks) {
       transition!.beforeEnter(el)
     }
+    // 4.插入节点
     hostInsert(el, container, anchor)
     if (
       (vnodeHook = props && props.onVnodeMounted) ||
@@ -794,11 +853,13 @@ function baseCreateRenderer(
     slotScopeIds: string[] | null,
     optimized: boolean
   ) => {
+    // 第一步我们要去绑定el,这三个都进行浅拷贝指向同一个内存空间
     const el = (n2.el = n1.el!)
     let { patchFlag, dynamicChildren, dirs } = n2
     // #1426 take the old vnode's patch flag into account since user may clone a
     // compiler-generated vnode, which de-opts to FULL_PROPS
     patchFlag |= n1.patchFlag & PatchFlags.FULL_PROPS
+    // 第二部我们要去获取新旧的props,为了后面去更新props的时候进行使用
     const oldProps = n1.props || EMPTY_OBJ
     const newProps = n2.props || EMPTY_OBJ
     let vnodeHook: VNodeHook | undefined | null
@@ -836,6 +897,7 @@ function baseCreateRenderer(
       }
     } else if (!optimized) {
       // full diff
+      // 更新子节点
       patchChildren(
         n1,
         n2,
@@ -856,6 +918,7 @@ function baseCreateRenderer(
       // (i.e. at the exact same position in the source template)
       if (patchFlag & PatchFlags.FULL_PROPS) {
         // element props contain dynamic keys, full diff needed
+        // 更新props
         patchProps(
           el,
           n2,
@@ -983,6 +1046,7 @@ function baseCreateRenderer(
     }
   }
 
+  // 更新props方法
   const patchProps = (
     el: RendererElement,
     vnode: VNode,
@@ -992,10 +1056,14 @@ function baseCreateRenderer(
     parentSuspense: SuspenseBoundary | null,
     isSVG: boolean
   ) => {
+    // 当新旧的props不一样的时候
     if (oldProps !== newProps) {
+      // 如果prop存在于旧的vnode但不存在于新的prop的话，那么需要删除
       if (oldProps !== EMPTY_OBJ) {
+        // 遍历旧的props
         for (const key in oldProps) {
           if (!isReservedProp(key) && !(key in newProps)) {
+            // 如果不存在于新的props，则需要删除
             hostPatchProp(
               el,
               key,
@@ -1010,13 +1078,17 @@ function baseCreateRenderer(
           }
         }
       }
+      // 遍历新的props
       for (const key in newProps) {
         // empty string is not valid prop
         if (isReservedProp(key)) continue
+        // 拿到当前的props值
         const next = newProps[key]
+        // 拿到旧的props的值
         const prev = oldProps[key]
         // defer patching value
         if (next !== prev && key !== 'value') {
+          // 更新prop的值,这个是界面实际的更新
           hostPatchProp(
             el,
             key,
@@ -1582,6 +1654,7 @@ function baseCreateRenderer(
     resetTracking()
   }
 
+  // 更新子节点方法
   const patchChildren: PatchChildrenFn = (
     n1,
     n2,
@@ -1593,12 +1666,16 @@ function baseCreateRenderer(
     slotScopeIds,
     optimized = false
   ) => {
+    // 拿到旧节点的children
     const c1 = n1 && n1.children
+    // 旧的flag
     const prevShapeFlag = n1 ? n1.shapeFlag : 0
+    // 新的节点的children
     const c2 = n2.children
-
+    // 新的flag,新节点必定存在所以不用三院表达式
     const { patchFlag, shapeFlag } = n2
     // fast path
+    // 接下来根据新旧节点类型不同来做不同的操作
     if (patchFlag > 0) {
       if (patchFlag & PatchFlags.KEYED_FRAGMENT) {
         // this could be either fully-keyed or mixed (some keyed some not)
@@ -1634,17 +1711,23 @@ function baseCreateRenderer(
 
     // children has 3 possibilities: text, array or no children.
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      // 如果新节点是TEXT_CHILDREN也就是文本子节点的时候
       // text children fast path
+      // 如果新节点是TEXT_CHILDREN也就是文本子节点的时候
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        // 旧的节点是一个数组，那么卸载旧的子节点
         unmountChildren(c1 as VNode[], parentComponent, parentSuspense)
       }
+      // 如果旧节点不是ARRAY_CHILDREN，那么就都是文本子节点，判断子节点是否相等
       if (c2 !== c1) {
+        // 如果不相等直接执行设置文本的操作
         hostSetElementText(container, c2 as string)
       }
     } else {
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         // prev children was array
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          // diff
           // two arrays, cannot assume anything, do full diff
           patchKeyedChildren(
             c1 as VNode[],
@@ -1658,6 +1741,7 @@ function baseCreateRenderer(
             optimized
           )
         } else {
+          // TODO：卸载
           // no new children, just unmount old
           unmountChildren(c1 as VNode[], parentComponent, parentSuspense, true)
         }
@@ -1665,10 +1749,12 @@ function baseCreateRenderer(
         // prev children was text OR null
         // new children is array OR null
         if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+          // 删除旧节点的 text
           hostSetElementText(container, '')
         }
         // mount new if array
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          // 单独子节点的挂载
           mountChildren(
             c2 as VNodeArrayChildren,
             container,
@@ -2311,16 +2397,22 @@ function baseCreateRenderer(
     return hostNextSibling((vnode.anchor || vnode.el)!)
   }
 
+  // 创建render函数
   const render: RootRenderFunction = (vnode, container, isSVG) => {
+    // 如果vnode传null
     if (vnode == null) {
+      // 判断旧节点是否存在,不存在执行卸载操作
       if (container._vnode) {
         unmount(container._vnode, null, null, true)
       }
     } else {
+      // 否则调用打补丁方法
+      //  container._vnode是旧节点,没有的话是null
       patch(container._vnode || null, vnode, container, null, null, null, isSVG)
     }
     flushPreFlushCbs()
     flushPostFlushCbs()
+    // 最后将当前的vnode保存成旧节点
     container._vnode = vnode
   }
 
@@ -2345,6 +2437,7 @@ function baseCreateRenderer(
     )
   }
 
+  // 到这里返回render跟createApp
   return {
     render,
     hydrate,

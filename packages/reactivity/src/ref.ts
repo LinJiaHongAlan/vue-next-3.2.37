@@ -36,10 +36,19 @@ type RefBase<T> = {
   value: T
 }
 
+/**
+ * 创建ref.dep对象关联effect
+ * @param ref
+ */
 export function trackRefValue(ref: RefBase<any>) {
+  // 如果不是在effect中触发的话,那么activeEffect=false不会经过这个判断进入后面的effect收集
   if (shouldTrack && activeEffect) {
     ref = toRaw(ref)
+    // 是否是开发环境
     if (__DEV__) {
+      // ref实例里面是否存在dep，没有的话则新生成一个
+      // 调用trackEffects关联effect依赖，这一步就跟reactive是一样的了
+      // 注意这一步光联的操作是针对ref.value修改的操作，对于ref为对象的时候本质上还是修改了ref._value里面通过toReactive转换的reactive对象触发的setter
       trackEffects(ref.dep || (ref.dep = createDep()), {
         target: ref,
         type: TrackOpTypes.GET,
@@ -95,9 +104,12 @@ export function shallowRef(value?: unknown) {
 }
 
 function createRef(rawValue: unknown, shallow: boolean) {
+  // 是否是ref对象,判断的方式就是对象是否具有__v_isRef=true
   if (isRef(rawValue)) {
+    // 是的话直接返回
     return rawValue
   }
+  // ref返回的始一个RefImpl类型的实例化对象
   return new RefImpl(rawValue, shallow)
 }
 
@@ -105,26 +117,39 @@ class RefImpl<T> {
   private _value: T
   private _rawValue: T
 
+  // Set数组
   public dep?: Dep = undefined
+  // 只读属性
   public readonly __v_isRef = true
 
+  // __v_isShallow是否是浅层的
   constructor(value: T, public readonly __v_isShallow: boolean) {
     this._rawValue = __v_isShallow ? value : toRaw(value)
+    // toReactive 的方法内部是 isObject(value) ? reactive(value) : value
+    // 如果所ref所传的值是对象，那么本质上ref的响应性是reactive完成的
     this._value = __v_isShallow ? value : toReactive(value)
   }
 
+  // 当访问ref.value的时候会触发
   get value() {
+    // 创建ref.dep并关联effect
     trackRefValue(this)
+    // 返回传入的对象
     return this._value
   }
 
+  // 当改变ref.value = xxxx的时候会触发
+  // 如果是复杂数据类型的情况下，那么通过ref.value.xxx = xxx是不会触发set，触发的是reactive的响应性
   set value(newVal) {
     const useDirectValue =
       this.__v_isShallow || isShallow(newVal) || isReadonly(newVal)
     newVal = useDirectValue ? newVal : toRaw(newVal)
+    // 判断新值跟旧值是否发生改变
     if (hasChanged(newVal, this._rawValue)) {
       this._rawValue = newVal
+      // 改变_value的值
       this._value = useDirectValue ? newVal : toReactive(newVal)
+      // 触发依赖
       triggerRefValue(this, newVal)
     }
   }

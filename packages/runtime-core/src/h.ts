@@ -171,6 +171,7 @@ export function h<P>(
 ): VNode
 
 // Actual implementation
+// h是创建vNode虚拟DOM的方法，这个是主入口
 export function h(type: any, propsOrChildren?: any, children?: any): VNode {
   const l = arguments.length
   if (l === 2) {
@@ -191,6 +192,7 @@ export function h(type: any, propsOrChildren?: any, children?: any): VNode {
     } else if (l === 3 && isVNode(children)) {
       children = [children]
     }
+    // 上面都是对参数的判断修改，createVNode才是真正创建vNode的方法
     return createVNode(type, propsOrChildren, children)
   }
 }

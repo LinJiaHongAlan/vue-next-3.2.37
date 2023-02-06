@@ -96,6 +96,7 @@ export class ReactiveEffect<T = any> {
       parent = parent.parent
     }
     try {
+      // 赋值一个activeEffect代表当前被激活的effect
       this.parent = activeEffect
       activeEffect = this
       shouldTrack = true
@@ -107,6 +108,7 @@ export class ReactiveEffect<T = any> {
       } else {
         cleanupEffect(this)
       }
+      // 这里执行fn也就是传进来的匿名函数，而在第一次执行的时候则会触发get方法
       return this.fn()
     } finally {
       if (effectTrackDepth <= maxMarkerBits) {
@@ -167,6 +169,7 @@ export interface ReactiveEffectRunner<T = any> {
   effect: ReactiveEffect
 }
 
+// effect方法触发的地方
 export function effect<T = any>(
   fn: () => T,
   options?: ReactiveEffectOptions
@@ -175,12 +178,16 @@ export function effect<T = any>(
     fn = (fn as ReactiveEffectRunner).effect.fn
   }
 
+  // 实例化一个ReactiveEffect对象传入effect的匿名函数
+  // _effect实例化对象里面有run跟stop方法
   const _effect = new ReactiveEffect(fn)
+  // 暂时传的是undefined
   if (options) {
     extend(_effect, options)
     if (options.scope) recordEffectScope(_effect, options.scope)
   }
   if (!options || !options.lazy) {
+    // 没有传options的话就执行run方法
     _effect.run()
   }
   const runner = _effect.run.bind(_effect) as ReactiveEffectRunner
@@ -210,14 +217,24 @@ export function resetTracking() {
   shouldTrack = last === undefined ? true : last
 }
 
+// 执行代码可知道track 内部主要做了两件事情
+// 10为targetMap 进行赋值，targetMap 的组成比较复杂
+// {
+//   target: new Map(
+//     key: new Set([])
+//   )
+// }
 export function track(target: object, type: TrackOpTypes, key: unknown) {
   if (shouldTrack && activeEffect) {
+    // 第一次没有所有读取到的depsMap是undefined
     let depsMap = targetMap.get(target)
     if (!depsMap) {
+      // 没有的话我们新生成一个Map保存起来，赋值于targetMap跟depsMap
       targetMap.set(target, (depsMap = new Map()))
     }
     let dep = depsMap.get(key)
     if (!dep) {
+      // createDep本质上就是返回一个new Set 不可重复的数组
       depsMap.set(key, (dep = createDep()))
     }
 
@@ -225,10 +242,12 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
       ? { effect: activeEffect, target, type, key }
       : undefined
 
+    // 建立属性跟effect的连接
     trackEffects(dep, eventInfo)
   }
 }
 
+// 建立属性跟effect的连接
 export function trackEffects(
   dep: Dep,
   debuggerEventExtraInfo?: DebuggerEventExtraInfo
@@ -245,6 +264,7 @@ export function trackEffects(
   }
 
   if (shouldTrack) {
+    // 将effect添加进Set数组
     dep.add(activeEffect!)
     activeEffect!.deps.push(dep)
     if (__DEV__ && activeEffect!.onTrack) {
@@ -370,6 +390,7 @@ function triggerEffect(
     if (__DEV__ && effect.onTrigger) {
       effect.onTrigger(extend({ effect }, debuggerEventExtraInfo))
     }
+    // 如果包含调度器则执行调度器，否则则执行run函数
     if (effect.scheduler) {
       effect.scheduler()
     } else {

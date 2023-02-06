@@ -153,6 +153,7 @@ export function watch<
 ): WatchStopHandle
 
 // implementation
+// watch方法入口
 export function watch<T = any, Immediate extends Readonly<boolean> = false>(
   source: T | WatchSource<T>,
   cb: any,
@@ -165,6 +166,9 @@ export function watch<T = any, Immediate extends Readonly<boolean> = false>(
         `supports \`watch(source, cb, options?) signature.`
     )
   }
+  // source是传递进来要监听的对象
+  // cb 是回调函数
+  // options是配置对象
   return doWatch(source as any, cb, options)
 }
 
@@ -197,15 +201,19 @@ function doWatch(
     )
   }
 
+  // 定义instance跟currentInstance进行浅拷贝绑定
   const instance = currentInstance
+  // 定义getter变量
   let getter: () => any
   let forceTrigger = false
   let isMultiSource = false
 
   if (isRef(source)) {
+    // 如果是ref，则绑定value值
     getter = () => source.value
     forceTrigger = isShallow(source)
   } else if (isReactive(source)) {
+    // 如果是reactive是直接绑定放回source的函数，并且deep设置为true
     getter = () => source
     deep = true
   } else if (isArray(source)) {
@@ -265,6 +273,7 @@ function doWatch(
     }
   }
 
+  // 如果是source是reactive则进入这个方法
   if (cb && deep) {
     const baseGetter = getter
     getter = () => traverse(baseGetter())
@@ -300,9 +309,11 @@ function doWatch(
     }
   }
 
+  // 判断isMultiSource是否是多个源，是的话则返回空数组，否则的返回INITIAL_WATCHER_VALUE
   let oldValue: any = isMultiSource
     ? new Array((source as []).length).fill(INITIAL_WATCHER_VALUE)
     : INITIAL_WATCHER_VALUE
+  // 声明job函数，这是整个watch的核心
   const job: SchedulerJob = () => {
     if (!effect.active) {
       return
@@ -329,11 +340,11 @@ function doWatch(
         callWithAsyncErrorHandling(cb, instance, ErrorCodes.WATCH_CALLBACK, [
           newValue,
           // pass undefined as the old value when it's changed for the first time
-          oldValue === INITIAL_WATCHER_VALUE 
+          oldValue === INITIAL_WATCHER_VALUE
             ? undefined
-            : (isMultiSource && oldValue[0] === INITIAL_WATCHER_VALUE)
-              ? []
-              : oldValue,
+            : isMultiSource && oldValue[0] === INITIAL_WATCHER_VALUE
+            ? []
+            : oldValue,
           onCleanup
         ])
         oldValue = newValue
@@ -348,6 +359,7 @@ function doWatch(
   // it is allowed to self-trigger (#1727)
   job.allowRecurse = !!cb
 
+  // 声明调度器变量
   let scheduler: EffectScheduler
   if (flush === 'sync') {
     scheduler = job as any // the scheduler function gets called directly
