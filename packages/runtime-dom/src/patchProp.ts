@@ -23,8 +23,10 @@ export const patchProp: DOMRendererOptions['patchProp'] = (
   unmountChildren
 ) => {
   if (key === 'class') {
+    // 处理class
     patchClass(el, nextValue, isSVG)
   } else if (key === 'style') {
+    // 处理样式
     patchStyle(el, prevValue, nextValue)
   } else if (isOn(key)) {
     // ignore v-model listeners
@@ -38,6 +40,7 @@ export const patchProp: DOMRendererOptions['patchProp'] = (
       ? ((key = key.slice(1)), false)
       : shouldSetAsProp(el, key, nextValue, isSVG)
   ) {
+    // 如果是DOMPrototype属性
     patchDOMProp(
       el,
       key,
@@ -48,6 +51,7 @@ export const patchProp: DOMRendererOptions['patchProp'] = (
       unmountChildren
     )
   } else {
+    // 如果是Attr属性
     // special case for <input v-model type="checkbox"> with
     // :true-value & :false-value
     // store value as dom properties since non-string values will be

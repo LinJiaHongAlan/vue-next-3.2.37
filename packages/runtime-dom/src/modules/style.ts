@@ -3,21 +3,29 @@ import { camelize, warn } from '@vue/runtime-core'
 
 type Style = string | Record<string, string | string[]> | null
 
+// 更新style
 export function patchStyle(el: Element, prev: Style, next: Style) {
+  // 拿到节点上面的style对象
   const style = (el as HTMLElement).style
+  // 判断新的值是否是一个字符串
   const isCssString = isString(next)
   if (next && !isCssString) {
+    // 如果不是一个字符串则则是对象使用forin循环
     for (const key in next) {
+      // 调用方法设置style的属性
       setStyle(style, key, next[key])
     }
+    // 遍历旧的style
     if (prev && !isString(prev)) {
       for (const key in prev) {
+        // 判断新的值中是否存在，如果不存在则删除
         if (next[key] == null) {
           setStyle(style, key, '')
         }
       }
     }
   } else {
+    // 如果是字符串
     const currentDisplay = style.display
     if (isCssString) {
       if (prev !== next) {
