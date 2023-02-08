@@ -38,20 +38,28 @@ export function patchEvent(
   instance: ComponentInternalInstance | null = null
 ) {
   // vei = vue event invokers
+  // 第一步拿到invokers缓存没有则新增一个空的
   const invokers = el._vei || (el._vei = {})
+  // 通过事件名称检测是否有缓存行为，来判断是否要更新
   const existingInvoker = invokers[rawName]
   if (nextValue && existingInvoker) {
     // patch
+    // 如果新的值存在，并且有缓存则是更新行为,直接改变value
     existingInvoker.value = nextValue
   } else {
+    // 如果不是更新则有两种行为
+    // 先将驼峰事件名转成小写
     const [name, options] = parseName(rawName)
     if (nextValue) {
       // add
+      // 如果新的值存在则创建事件函数
       const invoker = (invokers[rawName] = createInvoker(nextValue, instance))
       addEventListener(el, name, invoker, options)
     } else if (existingInvoker) {
       // remove
+      // 如果不存在并且旧的缓存存在则是删除
       removeEventListener(el, name, existingInvoker, options)
+      // 删除缓存
       invokers[rawName] = undefined
     }
   }
@@ -80,6 +88,12 @@ const p = /*#__PURE__*/ Promise.resolve()
 const getNow = () =>
   cachedNow || (p.then(() => (cachedNow = 0)), (cachedNow = Date.now()))
 
+/**
+ * 创建事件函数，接收新的函数，将真正执行的事件放到value中
+ * @param initialValue
+ * @param instance
+ * @returns
+ */
 function createInvoker(
   initialValue: EventValue,
   instance: ComponentInternalInstance | null

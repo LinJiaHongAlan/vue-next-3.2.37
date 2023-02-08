@@ -421,9 +421,11 @@ function baseCreateRenderer(
     // 获取vnode的类型然后根据不同类型分别做各自的操作
     switch (type) {
       case Text:
+        // 如果是文本
         processText(n1, n2, container, anchor)
         break
       case Comment:
+        // 如果是注释节点
         processCommentNode(n1, n2, container, anchor)
         break
       case Static:
@@ -514,26 +516,35 @@ function baseCreateRenderer(
 
   const processText: ProcessTextOrCommentFn = (n1, n2, container, anchor) => {
     if (n1 == null) {
+      // 如果旧的值不存在则是挂载,掉还用函数传入节点上的文本创建新的节点并保存到el
+      // 然后节点插入到容器
       hostInsert(
         (n2.el = hostCreateText(n2.children as string)),
         container,
         anchor
       )
     } else {
+      // 否则则是更新
+      // 节点对象传递给新的vnode
       const el = (n2.el = n1.el!)
+      // 比较下新旧节点得的文本是否一样
       if (n2.children !== n1.children) {
+        // 如果不一样则更新
         hostSetText(el, n2.children as string)
       }
     }
   }
 
+  // 处理注释节点
   const processCommentNode: ProcessTextOrCommentFn = (
     n1,
     n2,
     container,
     anchor
   ) => {
+    // 判断旧的节点是否存在
     if (n1 == null) {
+      // 跟文本节点一样我们第一步需要生成注释节点,插入到容器
       hostInsert(
         (n2.el = hostCreateComment((n2.children as string) || '')),
         container,
@@ -541,6 +552,7 @@ function baseCreateRenderer(
       )
     } else {
       // there's no support for dynamic comments
+      // 由于注释节点没有更新这种说法因此，只需要赋值一下注释节点给新的vnode就可以了
       n2.el = n1.el
     }
   }

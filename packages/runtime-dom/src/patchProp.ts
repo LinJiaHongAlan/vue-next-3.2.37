@@ -30,6 +30,7 @@ export const patchProp: DOMRendererOptions['patchProp'] = (
     patchStyle(el, prevValue, nextValue)
   } else if (isOn(key)) {
     // ignore v-model listeners
+    // on开头处理事件
     if (!isModelListener(key)) {
       patchEvent(el, key, prevValue, nextValue, parentComponent)
     }
