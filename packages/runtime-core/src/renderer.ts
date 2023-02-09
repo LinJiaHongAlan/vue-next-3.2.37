@@ -1267,6 +1267,7 @@ function baseCreateRenderer(
     }
   }
 
+  // 挂载组件函数
   const mountComponent: MountComponentFn = (
     initialVNode,
     container,
@@ -1282,6 +1283,8 @@ function baseCreateRenderer(
       __COMPAT__ && initialVNode.isCompatRoot && initialVNode.component
     const instance: ComponentInternalInstance =
       compatMountInstance ||
+      // 根据initialVNode也就是传入的vnode来生成组件的实例
+      // 放到vnode里面的component下面
       (initialVNode.component = createComponentInstance(
         initialVNode,
         parentComponent,
@@ -1307,6 +1310,7 @@ function baseCreateRenderer(
       if (__DEV__) {
         startMeasure(instance, `init`)
       }
+      // 在这个方法里面绑定render函数
       setupComponent(instance)
       if (__DEV__) {
         endMeasure(instance, `init`)
@@ -1327,6 +1331,8 @@ function baseCreateRenderer(
       return
     }
 
+    // 真正渲染组件
+    // 生成subTree挂载
     setupRenderEffect(
       instance,
       initialVNode,
@@ -1386,7 +1392,10 @@ function baseCreateRenderer(
     isSVG,
     optimized
   ) => {
+    // 在这里处理挂载操作
     const componentUpdateFn = () => {
+      // 在这里挂载subTree
+      // 判断是否挂载
       if (!instance.isMounted) {
         let vnodeHook: VNodeHook | null | undefined
         const { el, props } = initialVNode
@@ -1413,6 +1422,8 @@ function baseCreateRenderer(
         }
         toggleRecurse(instance, true)
 
+        // 没有的话需要挂载,renderComponentRoot可以简单的理解为执行render函数拿到render函数返回的vnode保存到subTree
+        // 源码中判断比较多,这里renderComponentRoot是核心代码
         if (el && hydrateNode) {
           // vnode has adopted host node - perform hydration instead of mount.
           const hydrateSubTree = () => {
@@ -1474,6 +1485,7 @@ function baseCreateRenderer(
           }
           initialVNode.el = subTree.el
         }
+
         // mounted hook
         if (m) {
           queuePostRenderEffect(m, parentSuspense)
@@ -1577,6 +1589,7 @@ function baseCreateRenderer(
         if (__DEV__) {
           startMeasure(instance, `patch`)
         }
+        // 调用patch,将subTree挂载到容器上,挂载的过程中会执行其他的挂载那么subTree上就会有el
         patch(
           prevTree,
           nextTree,
@@ -1591,6 +1604,7 @@ function baseCreateRenderer(
         if (__DEV__) {
           endMeasure(instance, `patch`)
         }
+        // 将el保存到组件层面上的vnode
         next.el = nextTree.el
         if (originNext === null) {
           // self-triggered update. In case of HOC, update parent component
