@@ -62,14 +62,7 @@ export function injectHook(
     )
   }
 }
-// 创建生命周期注册方法的统一地方
-// 对外暴露出一个方法,这个方法就是被registerLifecycleHook里面所调用会传进来对应的回调函数跟组件实例对象
-// 通过injectHook的方法吧hook注册到target
-// 接收的lifecycle就是组件实例对象里面保存的key
-/**
- * hook 回调函数
- * target 实例对象
- */
+
 export const createHook =
   <T extends Function = () => any>(lifecycle: LifecycleHooks) =>
   (hook: T, target: ComponentInternalInstance | null = currentInstance) =>
@@ -77,7 +70,6 @@ export const createHook =
     (!isInSSRComponentSetup || lifecycle === LifecycleHooks.SERVER_PREFETCH) &&
     injectHook(lifecycle, (...args: unknown[]) => hook(...args), target)
 
-// 导出每一个生命周期的注册方法
 export const onBeforeMount = createHook(LifecycleHooks.BEFORE_MOUNT)
 export const onMounted = createHook(LifecycleHooks.MOUNTED)
 export const onBeforeUpdate = createHook(LifecycleHooks.BEFORE_UPDATE)

@@ -543,7 +543,6 @@ export function createComponentInstance(
     isMounted: false,
     isUnmounted: false,
     isDeactivated: false,
-    // 生命周期
     bc: null,
     c: null,
     bm: null,

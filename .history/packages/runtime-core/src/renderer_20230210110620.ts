@@ -1312,7 +1312,7 @@ function baseCreateRenderer(
       }
       // 在这个方法里面绑定render函数
       // 绑定了响应式的data返回值
-      // 处理生命周期,完成生命周期的注册
+      // 处理生命周期
       setupComponent(instance)
       if (__DEV__) {
         endMeasure(instance, `init`)
@@ -1335,7 +1335,6 @@ function baseCreateRenderer(
 
     // 真正渲染组件
     // 生成subTree挂载,指向data
-    // 触发对应的生命周期
     setupRenderEffect(
       instance,
       initialVNode,
@@ -1402,13 +1401,11 @@ function baseCreateRenderer(
       if (!instance.isMounted) {
         let vnodeHook: VNodeHook | null | undefined
         const { el, props } = initialVNode
-        // 从实例里面取出注册好的回调函数
         const { bm, m, parent } = instance
         const isAsyncWrapperVNode = isAsyncWrapper(initialVNode)
 
         toggleRecurse(instance, false)
         // beforeMount hook
-        // 这个是在组件渲染前触发的回调onBeforeMount
         if (bm) {
           invokeArrayFns(bm)
         }
@@ -1492,7 +1489,6 @@ function baseCreateRenderer(
         }
 
         // mounted hook
-        // 这里完成了patch挂载了,在这里触发挂载后的回调也就是onMounted
         if (m) {
           queuePostRenderEffect(m, parentSuspense)
         }

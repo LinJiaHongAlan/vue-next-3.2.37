@@ -543,7 +543,6 @@ export function createComponentInstance(
     isMounted: false,
     isUnmounted: false,
     isDeactivated: false,
-    // 生命周期
     bc: null,
     c: null,
     bm: null,
@@ -855,9 +854,6 @@ export function finishComponentSetup(
   if (__FEATURE_OPTIONS_API__ && !(__COMPAT__ && skipOptions)) {
     setCurrentInstance(instance)
     pauseTracking()
-    // 赋值完之后我们取处理Options
-    // 在里面绑定了响应式的data返回值
-    // 处理生命周期
     applyOptions(instance)
     resetTracking()
     unsetCurrentInstance()

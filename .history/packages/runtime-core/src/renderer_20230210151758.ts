@@ -1402,13 +1402,11 @@ function baseCreateRenderer(
       if (!instance.isMounted) {
         let vnodeHook: VNodeHook | null | undefined
         const { el, props } = initialVNode
-        // 从实例里面取出注册好的回调函数
         const { bm, m, parent } = instance
         const isAsyncWrapperVNode = isAsyncWrapper(initialVNode)
 
         toggleRecurse(instance, false)
         // beforeMount hook
-        // 这个是在组件渲染前触发的回调onBeforeMount
         if (bm) {
           invokeArrayFns(bm)
         }
@@ -1492,7 +1490,6 @@ function baseCreateRenderer(
         }
 
         // mounted hook
-        // 这里完成了patch挂载了,在这里触发挂载后的回调也就是onMounted
         if (m) {
           queuePostRenderEffect(m, parentSuspense)
         }

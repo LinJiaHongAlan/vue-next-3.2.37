@@ -602,7 +602,6 @@ export function applyOptions(instance: ComponentInternalInstance) {
 
   // call beforeCreate first before accessing other options since
   // the hook may mutate resolved options (#2791)
-  // 如果生命周期beforeCreate存在
   if (options.beforeCreate) {
     callHook(options.beforeCreate, instance, LifecycleHooks.BEFORE_CREATE)
   }
@@ -795,16 +794,10 @@ export function applyOptions(instance: ComponentInternalInstance) {
     })
   }
 
-  // created的生命周期，此时实是在添加完data的响应式数据之后
   if (created) {
     callHook(created, instance, LifecycleHooks.CREATED)
   }
 
-  /**
-   * 注册回调统一方法
-   * @param register 接收每一个生命周期的注册方法将hook回调注册到对应的instance生命周期上去
-   * @param hook 生命周期
-   */
   function registerLifecycleHook(
     register: Function,
     hook?: Function | Function[]
@@ -816,12 +809,6 @@ export function applyOptions(instance: ComponentInternalInstance) {
     }
   }
 
-  /**
-   * 这个操作是将生命周期的回调函数注册到组件实例中
-   * onBeforeMount onMounted 都是封装对应类型的注册函数
-   * 经过registerLifecycleHook这个方法可以吧第二个参数的回调函数注册到第一个参数的函数中对应的类型上去
-   * 这样实例化对象里面就保存了对应的回调函数
-   */
   registerLifecycleHook(onBeforeMount, beforeMount)
   registerLifecycleHook(onMounted, mounted)
   registerLifecycleHook(onBeforeUpdate, beforeUpdate)

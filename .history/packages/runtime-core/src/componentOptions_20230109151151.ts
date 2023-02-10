@@ -592,7 +592,6 @@ function createDuplicateChecker() {
 export let shouldCacheAccess = true
 
 export function applyOptions(instance: ComponentInternalInstance) {
-  // 拿到options对象
   const options = resolveMergedOptions(instance)
   const publicThis = instance.proxy! as any
   const ctx = instance.ctx
@@ -602,13 +601,10 @@ export function applyOptions(instance: ComponentInternalInstance) {
 
   // call beforeCreate first before accessing other options since
   // the hook may mutate resolved options (#2791)
-  // 如果生命周期beforeCreate存在
   if (options.beforeCreate) {
     callHook(options.beforeCreate, instance, LifecycleHooks.BEFORE_CREATE)
   }
 
-  // 解构出所有的options,此时data是一个函数
-  // 包含了生命周期等的option
   const {
     // state
     data: dataOptions,
@@ -700,7 +696,6 @@ export function applyOptions(instance: ComponentInternalInstance) {
     }
   }
 
-  // 如果data存在
   if (dataOptions) {
     if (__DEV__ && !isFunction(dataOptions)) {
       warn(
@@ -708,7 +703,6 @@ export function applyOptions(instance: ComponentInternalInstance) {
           `Plain object usage is no longer supported.`
       )
     }
-    // 拿到data的返回值函数
     const data = dataOptions.call(publicThis, publicThis)
     if (__DEV__ && isPromise(data)) {
       warn(
@@ -717,11 +711,9 @@ export function applyOptions(instance: ComponentInternalInstance) {
           `async setup() + <Suspense>.`
       )
     }
-    // 判断data是否是对象
     if (!isObject(data)) {
       __DEV__ && warn(`data() should return an object.`)
     } else {
-      // 调用reactive将data变为响应式对象保存到实例里面,这样在调用render的时候可以将data改变一下指向
       instance.data = reactive(data)
       if (__DEV__) {
         for (const key in data) {
@@ -795,16 +787,10 @@ export function applyOptions(instance: ComponentInternalInstance) {
     })
   }
 
-  // created的生命周期，此时实是在添加完data的响应式数据之后
   if (created) {
     callHook(created, instance, LifecycleHooks.CREATED)
   }
 
-  /**
-   * 注册回调统一方法
-   * @param register 接收每一个生命周期的注册方法将hook回调注册到对应的instance生命周期上去
-   * @param hook 生命周期
-   */
   function registerLifecycleHook(
     register: Function,
     hook?: Function | Function[]
@@ -816,12 +802,6 @@ export function applyOptions(instance: ComponentInternalInstance) {
     }
   }
 
-  /**
-   * 这个操作是将生命周期的回调函数注册到组件实例中
-   * onBeforeMount onMounted 都是封装对应类型的注册函数
-   * 经过registerLifecycleHook这个方法可以吧第二个参数的回调函数注册到第一个参数的函数中对应的类型上去
-   * 这样实例化对象里面就保存了对应的回调函数
-   */
   registerLifecycleHook(onBeforeMount, beforeMount)
   registerLifecycleHook(onMounted, mounted)
   registerLifecycleHook(onBeforeUpdate, beforeUpdate)
@@ -940,10 +920,6 @@ export function resolveInjections(
   }
 }
 
-/**
- * 触发生命周期的函数
- * @param hook 生命周期
- */
 function callHook(
   hook: Function,
   instance: ComponentInternalInstance,
