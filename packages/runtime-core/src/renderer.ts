@@ -1427,8 +1427,6 @@ function baseCreateRenderer(
         }
         toggleRecurse(instance, true)
 
-        // 没有的话需要挂载,renderComponentRoot可以简单的理解为执行render函数拿到render函数返回的vnode保存到subTree
-        // 源码中判断比较多,这里renderComponentRoot是核心代码
         if (el && hydrateNode) {
           // vnode has adopted host node - perform hydration instead of mount.
           const hydrateSubTree = () => {
@@ -1469,6 +1467,7 @@ function baseCreateRenderer(
           if (__DEV__) {
             startMeasure(instance, `render`)
           }
+          // 没有的话需要挂载,renderComponentRoot可以简单的理解为执行render函数拿到render函数返回的vnode保存到subTree
           const subTree = (instance.subTree = renderComponentRoot(instance))
           if (__DEV__) {
             endMeasure(instance, `render`)
@@ -1476,6 +1475,7 @@ function baseCreateRenderer(
           if (__DEV__) {
             startMeasure(instance, `patch`)
           }
+          // 调用patch,将subTree挂载到容器上,挂载的过程中会执行其他的挂载那么subTree上就会有el
           patch(
             null,
             subTree,
@@ -1585,17 +1585,20 @@ function baseCreateRenderer(
         if (__DEV__) {
           startMeasure(instance, `render`)
         }
+        // 调用renderComponentRoot，因为data数据改变了内部会从新调用render返回最新的vnode
         const nextTree = renderComponentRoot(instance)
         if (__DEV__) {
           endMeasure(instance, `render`)
         }
+        // 拿到上一次的subTree
         const prevTree = instance.subTree
+        // 赋值最新的subTree
         instance.subTree = nextTree
 
         if (__DEV__) {
           startMeasure(instance, `patch`)
         }
-        // 调用patch,将subTree挂载到容器上,挂载的过程中会执行其他的挂载那么subTree上就会有el
+        // 更新挂载patch
         patch(
           prevTree,
           nextTree,
@@ -1650,6 +1653,10 @@ function baseCreateRenderer(
     }
 
     // create reactive effect for rendering
+    // 因为在setupComponent里面我们把data通过reactive转为了响应式数据,所以在这里new ReactiveEffect的时候
+    // 我们会执行到componentUpdateFn里面的renderComponentRoot 最终会执行render并将this指向响应式得的ata
+    // 当data里面的数据在render里面被访问到的时候会触发reactive里面的track收集ReactiveEffect
+    // 那么当data数据改变的时候就会调用ReactiveEffect的调度器queuePreFlushCb(update)最终会从新执行componentUpdateFn
     const effect = (instance.effect = new ReactiveEffect(
       componentUpdateFn,
       () => queueJob(update),
@@ -1672,6 +1679,7 @@ function baseCreateRenderer(
       update.ownerInstance = instance
     }
 
+    // 调用update会触发effect.run接着会触发componentUpdateFn
     update()
   }
 
@@ -1988,12 +1996,19 @@ function baseCreateRenderer(
     // [i ... e2 + 1]: a b [e d c h] f g
     // i = 2, e1 = 4, e2 = 5
     else {
-      const s1 = i // prev starting index
-      const s2 = i // next starting index
+      // 场景五
+      const s1 = i // prev starting index 旧节点开始的索引 oldChildrenStart
+      const s2 = i // next starting index 新节点开始的索引 newChildrenStart
 
       // 5.1 build key:index map for newChildren
+      // 5.1整个目的就是为了构建keyToNewIndexMap
+      // 创建一个 <key (新节点的key) : index(新节点的位置)> 的Map对象
+      // keyToNewIndexMap.通过该对象可知：新的child（根据key判断指定child）更新后的位置（根据对应的index判断）在哪里
       const keyToNewIndexMap: Map<string | number | symbol, number> = new Map()
+      // 通过循环为keyToNewIndexMap 填充值（s2 = newChildrenStart; el = newChildrenEnd）
+      // 这个可以看错是对新节点的循环
       for (i = s2; i <= e2; i++) {
+        // 从 newChildren 中根据开始索引获取每一个 child (c2 = newChildren)
         const nextChild = (c2[i] = optimized
           ? cloneIfMounted(c2[i] as VNode)
           : normalizeVNode(c2[i]))
@@ -2005,26 +2020,35 @@ function baseCreateRenderer(
               `Make sure keys are unique.`
             )
           }
+          // 这里意味着keu必须要有也必须是唯一的，否则就会报错，如果一切正常，那么keyToNewIndexMap就会保存<key: index>
           keyToNewIndexMap.set(nextChild.key, i)
         }
       }
 
       // 5.2 loop through old children left to be patched and try to patch
       // matching nodes & remove nodes that are no longer present
+      // 场景2
       let j
+      // 记录已经修复的新节点的数量
       let patched = 0
+      // 新节点还有几个需要修复
       const toBePatched = e2 - s2 + 1
+      // 当前节点是否需要进行移动
       let moved = false
       // used to track whether any node has moved
+      // 当前变量会始终保存最大的index的值
       let maxNewIndexSoFar = 0
       // works as Map<newIndex, oldIndex>
       // Note that oldIndex is offset by +1
       // and oldIndex = 0 is a special value indicating the new node has
       // no corresponding old node.
       // used for determining longest stable subsequence
+      // 这个是一个数组，数组的下标表示的是新节点的下表，他的元素表示的是旧节点的下标
       const newIndexToOldIndexMap = new Array(toBePatched)
+      // 循环给数组初始化一个0
       for (i = 0; i < toBePatched; i++) newIndexToOldIndexMap[i] = 0
 
+      // 循环旧节点
       for (i = s1; i <= e1; i++) {
         const prevChild = c1[i]
         if (patched >= toBePatched) {
@@ -2032,6 +2056,7 @@ function baseCreateRenderer(
           unmount(prevChild, parentComponent, parentSuspense, true)
           continue
         }
+        // 新节点存放的位置
         let newIndex
         if (prevChild.key != null) {
           newIndex = keyToNewIndexMap.get(prevChild.key)

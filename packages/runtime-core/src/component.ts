@@ -664,13 +664,16 @@ function setupStatefulComponent(
     exposePropsOnRenderContext(instance)
   }
   // 2. call setup()
+  // 获取setup参数
   const { setup } = Component
   if (setup) {
+    // 如果setup存在
     const setupContext = (instance.setupContext =
       setup.length > 1 ? createSetupContext(instance) : null)
 
     setCurrentInstance(instance)
     pauseTracking()
+    // 底层调用的是setup然后返回setup返回的额匿名函数
     const setupResult = callWithErrorHandling(
       setup,
       instance,
@@ -686,6 +689,7 @@ function setupStatefulComponent(
         // return the promise so server-renderer can wait on it
         return setupResult
           .then((resolvedResult: unknown) => {
+            // 将setup返回的匿名函数绑定到实例对象的render方法
             handleSetupResult(instance, resolvedResult, isSSR)
           })
           .catch(e => {
@@ -799,6 +803,7 @@ export function finishComponentSetup(
 
   // template / render function normalization
   // could be already set when returned from setup()
+  // 如果instance.render有值，证明存在setup在里面以及返回了函数了就无需进入
   if (!instance.render) {
     // only do on-the-fly compile if not in SSR - SSR on-the-fly compilation
     // is done by server-renderer
