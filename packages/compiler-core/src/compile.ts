@@ -82,6 +82,7 @@ export function baseCompile(
     onError(createCompilerError(ErrorCodes.X_SCOPE_ID_NOT_SUPPORTED))
   }
 
+  // 通过 parse 方法进行解析，得到AST
   const ast = isString(template) ? baseParse(template, options) : template
   const [nodeTransforms, directiveTransforms] =
     getBaseTransformPreset(prefixIdentifiers)
@@ -93,6 +94,7 @@ export function baseCompile(
     }
   }
 
+  // 2.通过 transform 方法对 AST 进行转化，得到 JavaScript AST
   transform(
     ast,
     extend({}, options, {
@@ -109,6 +111,7 @@ export function baseCompile(
     })
   )
 
+  // 3.通过generate 方法根据 AST生成render函数
   return generate(
     ast,
     extend({}, options, {

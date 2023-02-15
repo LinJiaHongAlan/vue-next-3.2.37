@@ -2132,6 +2132,7 @@ function baseCreateRenderer(
             slotScopeIds,
             optimized
           )
+          // patched是记录已被修复的新节点初始化是0
           patched++
         }
       }
@@ -2182,9 +2183,12 @@ function baseCreateRenderer(
           // j < 0表示不存在最长递增子序列,如果存在这判断后面的i !== increasingNewIndexSequence[j]
           // i 是当前待处理的下标 increasingNewIndexSequence[j]是最长递增子序列最后一个的下标
           // i !== increasingNewIndexSequence[j]表示当前节点不在最后位置
+          // 这里的目的是为了做最小的移动次数，所以需要知道做场递增子序列，j的值初始化是递增子序列的左后一个下标
           if (j < 0 || i !== increasingNewIndexSequence[j]) {
+            // 否则调用move移动节点
             move(nextChild, container, anchor, MoveType.REORDER)
           } else {
+            // 在当前的循环中如果i === increasingNewIndexSequence[j] 并且递增子序列还存在的话，意味着真实的节点处理以及跟当前递增序列重合，那么需要将下标往前移动
             j--
           }
         }
