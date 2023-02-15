@@ -1890,18 +1890,27 @@ function baseCreateRenderer(
     optimized: boolean
   ) => {
     let i = 0
+    // 获取新节点的长度
     const l2 = c2.length
+    // 旧节点的最后一个节点
     let e1 = c1.length - 1 // prev ending index
+    // 新节点的最后一个节点
     let e2 = l2 - 1 // next ending index
 
+    // 自前向后
+    // 循环判断当前的节点是否是新节点或旧节点中的最后一个,是则跳出循环
     // 1. sync from start
     // (a b) c
     // (a b) d e
     while (i <= e1 && i <= e2) {
+      // 拿到当前的新旧节点的vnode
       const n1 = c1[i]
+      // 在挂载子节点为数组的时候也是调用了normalizeVNode这个会将字符串直接转为标准化的vnode
+      // 所以oldChildren不需要再调用normalizeVNode
       const n2 = (c2[i] = optimized
         ? cloneIfMounted(c2[i] as VNode)
         : normalizeVNode(c2[i]))
+      // 判断新旧节点的类型是否一致
       if (isSameVNodeType(n1, n2)) {
         patch(
           n1,
@@ -1915,20 +1924,26 @@ function baseCreateRenderer(
           optimized
         )
       } else {
+        // 如果匹配不上的后跳出while
         break
       }
       i++
     }
 
+    // 自后向前匹配
+    // 在前面自前向后中假如有一个key或者类型匹配不上的话会中断这时候i还没到最后我们可以从最后一个节点出发
     // 2. sync from end
     // a (b c)
     // d e (b c)
     while (i <= e1 && i <= e2) {
+      // 从最后一个节点获取新旧节点的vnode
       const n1 = c1[e1]
       const n2 = (c2[e2] = optimized
         ? cloneIfMounted(c2[e2] as VNode)
         : normalizeVNode(c2[e2]))
+      // 判断是否匹配
       if (isSameVNodeType(n1, n2)) {
+        // 如果匹配则更新
         patch(
           n1,
           n2,
@@ -1941,12 +1956,14 @@ function baseCreateRenderer(
           optimized
         )
       } else {
+        // 否者跳出
         break
       }
       e1--
       e2--
     }
 
+    // 新节点多于旧节点
     // 3. common sequence + mount
     // (a b)
     // (a b) c
@@ -1956,8 +1973,14 @@ function baseCreateRenderer(
     // i = 0, e1 = -1, e2 = 0
     if (i > e1) {
       if (i <= e2) {
+        // 在上面自前向后跟自后向前之后如果循环到这里，那表示新节点多于旧节点
+        // 我们需要找到多出来的节点el在children的位置
+        // 首先找到新节点最后一个位置的下一个el，我们要在这个el之前添加
         const nextPos = e2 + 1
+        // 但是节点有可能是在最后才添加的这样nextPos会超出新节点的长度
+        // 我们需要根据这个来确定锚点parentAnchor=null，所以也会直接往后面添加
         const anchor = nextPos < l2 ? (c2[nextPos] as VNode).el : parentAnchor
+        // i~newChildrenEnd既是新增的长度我们做个循环添加一下
         while (i <= e2) {
           patch(
             null,
@@ -1978,6 +2001,7 @@ function baseCreateRenderer(
     }
 
     // 4. common sequence + unmount
+    // 旧节点多于新节点
     // (a b) c
     // (a b)
     // i = 2, e1 = 2, e2 = 1
@@ -2006,7 +2030,7 @@ function baseCreateRenderer(
       // keyToNewIndexMap.通过该对象可知：新的child（根据key判断指定child）更新后的位置（根据对应的index判断）在哪里
       const keyToNewIndexMap: Map<string | number | symbol, number> = new Map()
       // 通过循环为keyToNewIndexMap 填充值（s2 = newChildrenStart; el = newChildrenEnd）
-      // 这个可以看错是对新节点的循环
+      // 这个可以看成是对新节点的循环
       for (i = s2; i <= e2; i++) {
         // 从 newChildren 中根据开始索引获取每一个 child (c2 = newChildren)
         const nextChild = (c2[i] = optimized
@@ -2043,14 +2067,16 @@ function baseCreateRenderer(
       // and oldIndex = 0 is a special value indicating the new node has
       // no corresponding old node.
       // used for determining longest stable subsequence
-      // 这个是一个数组，数组的下标表示的是新节点的下表，他的元素表示的是旧节点的下标
+      // 这个是一个数组，数组的下标表示的是新节点的下标，他的元素表示的是旧节点的下标
       const newIndexToOldIndexMap = new Array(toBePatched)
       // 循环给数组初始化一个0
       for (i = 0; i < toBePatched; i++) newIndexToOldIndexMap[i] = 0
 
       // 循环旧节点
       for (i = s1; i <= e1; i++) {
+        // c1是节点的数组,prevChild是被遍历出来的节点
         const prevChild = c1[i]
+        // 如果修复已经修复的数量大于需要修复的数量这直接取消挂载
         if (patched >= toBePatched) {
           // all new children have been patched so this can only be a removal
           unmount(prevChild, parentComponent, parentSuspense, true)
@@ -2058,12 +2084,16 @@ function baseCreateRenderer(
         }
         // 新节点存放的位置
         let newIndex
+        // 如果存在key
         if (prevChild.key != null) {
+          // keyToNewIndexMap的key存放的是新节点的key,拿旧节点的key如果存在这会返回新节点的下标，不存在这是undefined
           newIndex = keyToNewIndexMap.get(prevChild.key)
         } else {
           // key-less node, try to locate a key-less node of the same type
+          // 如果不存在key遍历所有新节点，找到没有找到旧节点的新节点
           for (j = s2; j <= e2; j++) {
             if (
+              // [j - s2]的意思是因为newIndexToOldIndexMap本质上是一个数组,而循环的开始s2不一定在起始点，为了位置跟数组对应
               newIndexToOldIndexMap[j - s2] === 0 &&
               isSameVNodeType(prevChild, c2[j] as VNode)
             ) {
@@ -2072,15 +2102,25 @@ function baseCreateRenderer(
             }
           }
         }
+        // 判断是否newIndex不存在
         if (newIndex === undefined) {
+          // 不存在则表示在新节点中不存在该旧节点,应该删除
           unmount(prevChild, parentComponent, parentSuspense, true)
         } else {
+          // 到这里这标识新节点在旧节点中存在，只是发生了位移
+          // [newIndex - s2]是新节点的下标
+          // (i + 1)是旧节点的下标,因为newIndexToOldIndexMap默认等于0代表着不存在，所以下标必须先+1来标识后面会通过i--来还原
           newIndexToOldIndexMap[newIndex - s2] = i + 1
+          // maxNewIndexSoFar会存储当前最大的newIndex
           if (newIndex >= maxNewIndexSoFar) {
+            // newIndex如果大于maxNewIndexSoFar，证明newIndex是递增的那么更新一下最大值
             maxNewIndexSoFar = newIndex
           } else {
+            // newIndex如果小于的话，则证明不是递增的，那么这个节点需要移动
             moved = true
           }
+          // 到这里是证明新旧节点同时都存在,发生移位的操作在5.3这里我们先要将新旧节点的元素进行更新
+          // prevChild为纠结点c2[newIndex]为新节点
           patch(
             prevChild,
             c2[newIndex] as VNode,
@@ -2098,17 +2138,30 @@ function baseCreateRenderer(
 
       // 5.3 move and mount
       // generate longest stable subsequence only when nodes have moved
+      // 如果moved=true，那么increasingNewIndexSequence=旧节点的下标的最长递增子序列的下标
+      // 注意getSequence这个方法是求最长递增子序列下标，但是0会忽略掉不进行计算
+      // newIndexToOldIndexMap为旧未处理的下标0代表不存在
+      // 如果newIndexToOldIndexMap=[2, 1, 0],那么increasingNewIndexSequence=[1(这个1代表的是下标)]
       const increasingNewIndexSequence = moved
         ? getSequence(newIndexToOldIndexMap)
         : EMPTY_ARR
+      // j的初始值=最长递增子序列最后的下标
       j = increasingNewIndexSequence.length - 1
       // looping backwards so that we can use last patched node as anchor
+      // 倒叙循环待处理的节点
       for (i = toBePatched - 1; i >= 0; i--) {
+        // s2表示新节点的起点，s2+i表示需要更新的新节点的下标从后向前倒叙
         const nextIndex = s2 + i
+        // 拿到节点对象
         const nextChild = c2[nextIndex] as VNode
+        // l2表示新节点的长度，nextIndex表示新节点的下标
+        // nextIndex + 1 < l2标识锚点是否超过了最长的长度false为超出true为不超出
+        // 如果超出则直接锚点为父级没超出则取出新节点下面的el作为锚点
         const anchor =
           nextIndex + 1 < l2 ? (c2[nextIndex + 1] as VNode).el : parentAnchor
         if (newIndexToOldIndexMap[i] === 0) {
+          // 如果newIndexToOldIndexMap[i] === 0意味着新节点存在但是旧节点不存在，应该挂载上去
+          // 这样一来新增的节点就会挂载上去对应的锚点
           // mount new
           patch(
             null,
@@ -2122,9 +2175,13 @@ function baseCreateRenderer(
             optimized
           )
         } else if (moved) {
+          // 如果存在并且moved=true则需要移动
           // move if:
           // There is no stable subsequence (e.g. a reverse)
           // OR current node is not among the stable sequence
+          // j < 0表示不存在最长递增子序列,如果存在这判断后面的i !== increasingNewIndexSequence[j]
+          // i 是当前待处理的下标 increasingNewIndexSequence[j]是最长递增子序列最后一个的下标
+          // i !== increasingNewIndexSequence[j]表示当前节点不在最后位置
           if (j < 0 || i !== increasingNewIndexSequence[j]) {
             move(nextChild, container, anchor, MoveType.REORDER)
           } else {
