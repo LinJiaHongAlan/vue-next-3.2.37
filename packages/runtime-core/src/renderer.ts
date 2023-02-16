@@ -2182,6 +2182,9 @@ function baseCreateRenderer(
           // OR current node is not among the stable sequence
           // j < 0表示不存在最长递增子序列,如果存在这判断后面的i !== increasingNewIndexSequence[j]
           // i 是当前待处理的下标 increasingNewIndexSequence[j]是最长递增子序列最后一个的下标
+          // 推理: increasingNewIndexSequence = getSequence(newIndexToOldIndexMap);newIndexToOldIndexMap保存的是旧节点的下标
+          // increasingNewIndexSequence[j]表示最后一个旧节点下标的递增子序列的位置
+          // i是待处理的节点的下标
           // i !== increasingNewIndexSequence[j]表示当前节点不在最后位置
           // 这里的目的是为了做最小的移动次数，所以需要知道做场递增子序列，j的值初始化是递增子序列的左后一个下标
           if (j < 0 || i !== increasingNewIndexSequence[j]) {
