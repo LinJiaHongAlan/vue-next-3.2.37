@@ -465,7 +465,7 @@ function baseCreateRenderer(
             slotScopeIds,
             optimized
           )
-        } else if (shapeFlag & ShapeFlags.COMPONENT) {
+        } else if (10 & ShapeFlags.COMPONENT) {
           // 是否为组件类型
           processComponent(
             n1,

@@ -273,10 +273,10 @@ function parseChildren(
               (shouldCondense &&
                 ((prev.type === NodeTypes.COMMENT &&
                   next.type === NodeTypes.COMMENT) ||
-                  (prev.type === NodeTypes.COMMENT && 
-                  next.type === NodeTypes.ELEMENT) ||
+                  (prev.type === NodeTypes.COMMENT &&
+                    next.type === NodeTypes.ELEMENT) ||
                   (prev.type === NodeTypes.ELEMENT &&
-                  next.type === NodeTypes.COMMENT) ||
+                    next.type === NodeTypes.COMMENT) ||
                   (prev.type === NodeTypes.ELEMENT &&
                     next.type === NodeTypes.ELEMENT &&
                     /[\r\n]/.test(node.content))))
@@ -1090,6 +1090,12 @@ function last<T>(xs: T[]): T | undefined {
   return xs[xs.length - 1]
 }
 
+/**
+ * 判断字符串source是否以searchString开头,这里一般用来判断标签开始或结束
+ * @param source 被判断的对象
+ * @param searchString 判断条件
+ * @returns
+ */
 function startsWith(source: string, searchString: string): boolean {
   return source.startsWith(searchString)
 }
@@ -1139,6 +1145,7 @@ function emitError(
   )
 }
 
+// 判断当前是否是结束标签
 function isEnd(
   context: ParserContext,
   mode: TextModes,
